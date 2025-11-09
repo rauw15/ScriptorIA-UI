@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/practice_item.dart';
 import '../../domain/entities/user_stats.dart';
 import '../../data/repositories/practice_repository_impl.dart';
+import '../../../auth/data/repositories/auth_repository_impl.dart';
 import '../widgets/home_header.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/section_header.dart';
@@ -18,9 +19,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final PracticeRepositoryImpl _repository = PracticeRepositoryImpl();
+  final AuthRepositoryImpl _authRepository = AuthRepositoryImpl();
   
   bool _isLoading = true;
-  String userName = 'María';
+  String userName = 'Usuario';
   UserStats? _stats;
   List<PracticeItem> _letters = [];
   List<PracticeItem> _numbers = [];
@@ -28,7 +30,21 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     _loadData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final user = await _authRepository.getCurrentUser();
+      if (user != null && mounted) {
+        setState(() {
+          userName = user.name ?? user.email.split('@')[0];
+        });
+      }
+    } catch (e) {
+      // Si no hay usuario, mantener el nombre por defecto
+    }
   }
 
   Future<void> _loadData() async {
