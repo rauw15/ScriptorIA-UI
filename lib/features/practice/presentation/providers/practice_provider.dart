@@ -5,7 +5,9 @@ import '../../domain/entities/practice_state.dart';
 import '../../domain/usecases/analyze_handwriting_usecase.dart';
 import '../../data/datasources/image_picker_datasource.dart';
 import '../../data/datasources/camera_datasource.dart';
+import '../../data/datasources/trace_service_datasource.dart';
 import '../../data/repositories/practice_repository_impl.dart';
+import '../../../../core/network/api_client.dart';
 
 class PracticeNotifier extends StateNotifier<PracticeState> {
   final AnalyzeHandwritingUseCase analyzeHandwritingUseCase;
@@ -29,10 +31,26 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
         errorMessage: null,
       );
     } catch (e) {
-      state = state.copyWith(
-        status: PracticeStatus.error,
-        errorMessage: e.toString(),
-      );
+      String errorMessage;
+      if (e is ImagePickerException) {
+        errorMessage = e.message;
+      } else {
+        errorMessage = e.toString().replaceFirst('Exception: ', '').replaceFirst('ImagePickerException: ', '');
+      }
+      
+      if (errorMessage.contains('No se seleccionó ninguna imagen') ||
+          errorMessage.contains('cancel') ||
+          errorMessage.contains('Usuario canceló')) {
+        state = state.copyWith(
+          status: PracticeStatus.initial,
+          errorMessage: null,
+        );
+      } else {
+        state = state.copyWith(
+          status: PracticeStatus.error,
+          errorMessage: errorMessage,
+        );
+      }
     }
   }
 
@@ -46,10 +64,26 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
         errorMessage: null,
       );
     } catch (e) {
-      state = state.copyWith(
-        status: PracticeStatus.error,
-        errorMessage: e.toString(),
-      );
+      String errorMessage;
+      if (e is ImagePickerException) {
+        errorMessage = e.message;
+      } else {
+        errorMessage = e.toString();
+      }
+      
+      if (errorMessage.contains('No se seleccionó ninguna imagen') ||
+          errorMessage.contains('cancel') ||
+          errorMessage.contains('Usuario canceló')) {
+        state = state.copyWith(
+          status: PracticeStatus.initial,
+          errorMessage: null,
+        );
+      } else {
+        state = state.copyWith(
+          status: PracticeStatus.error,
+          errorMessage: errorMessage,
+        );
+      }
     }
   }
 
@@ -71,11 +105,15 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
 
     try {
       state = state.copyWith(status: PracticeStatus.analyzing);
-      await analyzeHandwritingUseCase(
+      final practiceId = await analyzeHandwritingUseCase(
         imagePath: state.selectedImagePath!,
         letter: state.letter,
       );
-      state = state.copyWith(status: PracticeStatus.analysisComplete);
+      
+      state = state.copyWith(
+        status: PracticeStatus.analysisComplete,
+        practiceId: practiceId,
+      );
     } catch (e) {
       state = state.copyWith(
         status: PracticeStatus.error,
@@ -85,7 +123,18 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
   }
 }
 
-// Providers
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient();
+});
+
+final traceServiceDataSourceProvider = Provider<TraceServiceDataSource>((ref) {
+  return TraceServiceDataSourceImpl(ref.watch(apiClientProvider));
+});
+
+final practiceRepositoryProvider = Provider<PracticeRepositoryImpl>((ref) {
+  return PracticeRepositoryImpl(ref.watch(traceServiceDataSourceProvider));
+});
+
 final imagePickerDataSourceProvider = Provider<ImagePickerDataSource>((ref) {
   return ImagePickerDataSourceImpl(ImagePicker());
 });
@@ -95,8 +144,7 @@ final cameraDataSourceProvider = Provider<CameraDataSource>((ref) {
 });
 
 final analyzeHandwritingUseCaseProvider = Provider<AnalyzeHandwritingUseCase>((ref) {
-  // TODO: Inyectar desde AppConfig
-  return AnalyzeHandwritingUseCase(PracticeRepositoryImpl());
+  return AnalyzeHandwritingUseCase(ref.watch(practiceRepositoryProvider));
 });
 
 final practiceProvider = StateNotifierProvider.family<PracticeNotifier, PracticeState, String>(

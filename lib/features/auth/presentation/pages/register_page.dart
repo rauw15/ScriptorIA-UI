@@ -231,7 +231,7 @@ class _RegisterPageState extends State<RegisterPage> {
         CustomTextField(
           controller: _usernameController,
           label: 'Nombre de usuario',
-          hint: 'juan_perez',
+          hint: 'Nombre de usuario',
           icon: Icons.person_outline,
           keyboardType: TextInputType.text,
           validator: (value) {
@@ -249,7 +249,7 @@ class _RegisterPageState extends State<RegisterPage> {
         CustomTextField(
           controller: _emailController,
           label: 'Correo electrónico',
-          hint: 'tu@email.com',
+          hint: 'Correo electrónico',
           icon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
           validator: (value) {
@@ -267,7 +267,7 @@ class _RegisterPageState extends State<RegisterPage> {
         CustomTextField(
           controller: _passwordController,
           label: 'Contraseña',
-          hint: 'Mínimo 8 caracteres',
+          hint: 'Contraseña (Mínimo 8 caracteres)',
           icon: Icons.lock_outline,
           obscureText: _obscurePassword,
           suffixIcon: IconButton(
@@ -296,7 +296,7 @@ class _RegisterPageState extends State<RegisterPage> {
         CustomTextField(
           controller: _confirmPasswordController,
           label: 'Confirmar contraseña',
-          hint: 'Repite tu contraseña',
+          hint: 'Confirmar contraseña',
           icon: Icons.lock_outline,
           obscureText: _obscureConfirmPassword,
           suffixIcon: IconButton(
@@ -325,7 +325,7 @@ class _RegisterPageState extends State<RegisterPage> {
         CustomTextField(
           controller: _ageController,
           label: 'Edad',
-          hint: '25',
+          hint: 'Edad',
           icon: Icons.calendar_today_outlined,
           keyboardType: TextInputType.number,
           validator: (value) {

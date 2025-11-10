@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../utils/constants.dart';
 
 /// Cliente HTTP para comunicarse con el API
@@ -29,6 +31,10 @@ class ApiClient {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          // No sobrescribir Content-Type si es FormData (multipart)
+          if (options.data is FormData) {
+            options.headers.remove('Content-Type');
+          }
           return handler.next(options);
         },
         onError: (error, handler) async {
@@ -46,6 +52,31 @@ class ApiClient {
     await _secureStorage.write(key: _tokenKey, value: token);
   }
 
+  /// Guarda los datos del usuario
+  Future<void> saveUserData(Map<String, dynamic> userData) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_data', jsonEncode(userData));
+  }
+
+  /// Obtiene los datos del usuario guardados
+  Future<Map<String, dynamic>?> getUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('user_data');
+      if (userDataString != null) {
+        return jsonDecode(userDataString) as Map<String, dynamic>;
+      }
+    } catch (e) {
+    }
+    return null;
+  }
+
+  /// Elimina los datos del usuario
+  Future<void> deleteUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_data');
+  }
+
   /// Obtiene el token de autenticación
   Future<String?> getToken() async {
     return await _secureStorage.read(key: _tokenKey);
@@ -54,11 +85,16 @@ class ApiClient {
   /// Elimina el token de autenticación
   Future<void> deleteToken() async {
     await _secureStorage.delete(key: _tokenKey);
+    await deleteUserData();
   }
 
   /// Realiza una petición GET
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
     try {
+      // Si la path es una URL absoluta, usar un Dio temporal sin baseUrl
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return await _makeAbsoluteRequest('GET', path, queryParameters: queryParameters);
+      }
       return await _dio.get(path, queryParameters: queryParameters);
     } on DioException catch (e) {
       throw _handleError(e);
@@ -68,6 +104,10 @@ class ApiClient {
   /// Realiza una petición POST
   Future<Response> post(String path, {dynamic data, Map<String, dynamic>? queryParameters}) async {
     try {
+      // Si la path es una URL absoluta, usar un Dio temporal sin baseUrl
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return await _makeAbsoluteRequest('POST', path, data: data, queryParameters: queryParameters);
+      }
       return await _dio.post(path, data: data, queryParameters: queryParameters);
     } on DioException catch (e) {
       throw _handleError(e);
@@ -77,6 +117,10 @@ class ApiClient {
   /// Realiza una petición PUT
   Future<Response> put(String path, {dynamic data, Map<String, dynamic>? queryParameters}) async {
     try {
+      // Si la path es una URL absoluta, usar un Dio temporal sin baseUrl
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return await _makeAbsoluteRequest('PUT', path, data: data, queryParameters: queryParameters);
+      }
       return await _dio.put(path, data: data, queryParameters: queryParameters);
     } on DioException catch (e) {
       throw _handleError(e);
@@ -86,9 +130,67 @@ class ApiClient {
   /// Realiza una petición DELETE
   Future<Response> delete(String path, {dynamic data, Map<String, dynamic>? queryParameters}) async {
     try {
+      // Si la path es una URL absoluta, usar un Dio temporal sin baseUrl
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return await _makeAbsoluteRequest('DELETE', path, data: data, queryParameters: queryParameters);
+      }
       return await _dio.delete(path, data: data, queryParameters: queryParameters);
     } on DioException catch (e) {
       throw _handleError(e);
+    }
+  }
+
+  /// Realiza una petición con URL absoluta (sin baseUrl)
+  Future<Response> _makeAbsoluteRequest(
+    String method,
+    String url, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        headers: {
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    // Agregar interceptor para autenticación
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await _secureStorage.read(key: _tokenKey);
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          // No sobrescribir Content-Type si es FormData (multipart)
+          if (options.data is FormData) {
+            options.headers.remove('Content-Type');
+          }
+          return handler.next(options);
+        },
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401) {
+            await _secureStorage.delete(key: _tokenKey);
+          }
+          return handler.next(error);
+        },
+      ),
+    );
+
+    switch (method.toUpperCase()) {
+      case 'GET':
+        return await dio.get(url, queryParameters: queryParameters);
+      case 'POST':
+        return await dio.post(url, data: data, queryParameters: queryParameters);
+      case 'PUT':
+        return await dio.put(url, data: data, queryParameters: queryParameters);
+      case 'DELETE':
+        return await dio.delete(url, data: data, queryParameters: queryParameters);
+      default:
+        throw Exception('Método HTTP no soportado: $method');
     }
   }
 

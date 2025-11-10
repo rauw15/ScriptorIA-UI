@@ -43,19 +43,14 @@ class BottomNavigation extends StatelessWidget {
                 index: 0,
               ),
               _buildNavItem(
-                icon: Icons.edit,
-                label: 'Práctica',
-                index: 1,
-              ),
-              _buildNavItem(
                 icon: Icons.bar_chart,
-                label: 'Progreso',
-                index: 2,
+                label: 'Estadísticas',
+                index: 1,
               ),
               _buildNavItem(
                 icon: Icons.person,
                 label: 'Perfil',
-                index: 3,
+                index: 2,
               ),
             ],
           ),

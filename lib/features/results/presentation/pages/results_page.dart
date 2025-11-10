@@ -4,47 +4,81 @@ import '../providers/results_provider.dart';
 import '../widgets/score_container.dart';
 import '../widgets/metrics_section.dart';
 import '../widgets/feedback_cards.dart';
+import '../../../home/domain/entities/practice_item.dart';
 
 class ResultsPage extends ConsumerWidget {
-  final String imagePath;
-  final String letter;
+  final String? imagePath;
+  final String? letter;
+  final String? practiceId;
 
   const ResultsPage({
     super.key,
-    required this.imagePath,
-    required this.letter,
+    this.imagePath,
+    this.letter,
+    this.practiceId,
   });
+
+  factory ResultsPage.fromImageAndLetter({
+    required String imagePath,
+    required String letter,
+  }) {
+    return ResultsPage(
+      imagePath: imagePath,
+      letter: letter,
+    );
+  }
+
+  factory ResultsPage.fromPracticeId({
+    required String practiceId,
+  }) {
+    return ResultsPage(practiceId: practiceId);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final resultsAsync = ref.watch(
-      resultsProvider(ResultsParams(imagePath: imagePath, letter: letter)),
+      resultsProvider(
+        practiceId != null
+            ? ResultsParams.fromPracticeId(practiceId: practiceId!)
+            : ResultsParams.fromImageAndLetter(
+                imagePath: imagePath!,
+                letter: letter!,
+              ),
+      ),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text('Resultados'),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-            },
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
           ),
-        ],
-      ),
-      body: resultsAsync.when(
+          title: const Text('Resultados'),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () {
+              },
+            ),
+          ],
+        ),
+        body: resultsAsync.when(
         data: (result) => _buildContent(context, result),
         loading: () => const Center(
           child: CircularProgressIndicator(),
         ),
         error: (error, stack) => _buildError(context, error.toString()),
+        ),
       ),
     );
   }
@@ -115,9 +149,20 @@ class ResultsPage extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child:           OutlinedButton(
+          child: OutlinedButton(
             onPressed: () {
-              Navigator.of(context).pushReplacementNamed('/practice', arguments: {'letter': letter});
+              // Si tenemos letter, usarlo; si no, usar 'A' por defecto
+              final letterToUse = letter ?? 'A';
+              // Crear un PracticeItem temporal para navegar
+              final practiceItem = PracticeItem(
+                id: 'temp_$letterToUse',
+                text: letterToUse,
+                status: PracticeStatus.pending,
+              );
+              Navigator.of(context).pushReplacementNamed(
+                '/practice',
+                arguments: practiceItem,
+              );
             },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -129,7 +174,7 @@ class ResultsPage extends ConsumerWidget {
         Expanded(
           child: OutlinedButton(
             onPressed: () {
-              // TODO: Navegar a historial
+              Navigator.of(context).pushNamed('/history');
             },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),

@@ -5,5 +5,8 @@ abstract class ResultsRepository {
     required String imagePath,
     required String letter,
   });
+  
+  /// Obtiene el resultado del análisis usando el practiceId
+  Future<AnalysisResult> getAnalysisResultByPracticeId(String practiceId);
 }
 

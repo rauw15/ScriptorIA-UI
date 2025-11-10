@@ -122,10 +122,15 @@ class AuthRepositoryImpl implements AuthRepository {
         return null;
       }
 
+      // Usar name si está disponible y no está vacío, sino null
+      final userName = userModel.name.trim().isNotEmpty 
+          ? userModel.name.trim() 
+          : null;
+      
       return home_user.User(
         id: userModel.id,
         email: userModel.email,
-        name: userModel.name.isNotEmpty ? userModel.name : null,
+        name: userName,
         photoUrl: userModel.photoUrl,
       );
     } catch (e) {

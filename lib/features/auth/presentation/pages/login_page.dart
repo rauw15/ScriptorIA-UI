@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/constants.dart';
@@ -115,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildHeader() {
     return Column(
       children: [
-        // Logo pequeño
+        // Logo pequeño con estrella
         Container(
           width: 60,
           height: 60,
@@ -123,10 +124,8 @@ class _LoginPageState extends State<LoginPage> {
             shape: BoxShape.circle,
             color: AppColors.primary.withOpacity(0.2),
           ),
-          child: const Icon(
-            Icons.edit,
-            size: 30,
-            color: AppColors.primary,
+          child: CustomPaint(
+            painter: StarLogoPainter(),
           ),
         ),
         const SizedBox(height: 20),
@@ -159,7 +158,7 @@ class _LoginPageState extends State<LoginPage> {
         CustomTextField(
           controller: _emailController,
           label: 'Correo electrónico',
-          hint: 'tu@email.com',
+          hint: 'Correo electrónico',
           icon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
           validator: Validators.email,
@@ -169,7 +168,7 @@ class _LoginPageState extends State<LoginPage> {
         CustomTextField(
           controller: _passwordController,
           label: 'Contraseña',
-          hint: '••••••••',
+          hint: 'Contraseña',
           icon: Icons.lock_outline,
           obscureText: _obscurePassword,
           suffixIcon: IconButton(
@@ -262,7 +261,14 @@ class _LoginPageState extends State<LoginPage> {
         SocialButton(
           text: 'Continuar con Google',
           icon: 'G',
-          onPressed: _isLoading ? null : _handleGoogleLogin,
+          onPressed: () {
+            // TODO: Navegar a pantalla de recuperar contraseña(no implementada)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Funcionalidad próximamente'),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -327,5 +333,40 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+}
+
+class StarLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 3;
+
+    // Dibujar estrella de 4 puntas
+    final path = Path();
+    final points = 8;
+    
+    for (int i = 0; i < points; i++) {
+      final angle = (i * 2 * math.pi) / points - math.pi / 2;
+      final r = i % 2 == 0 ? radius : radius * 0.4;
+      final x = center.dx + r * math.cos(angle);
+      final y = center.dy + r * math.sin(angle);
+      
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+
+    final paint = Paint()
+      ..color = AppColors.primary
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(StarLogoPainter oldDelegate) => false;
 }
 

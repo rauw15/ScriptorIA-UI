@@ -15,5 +15,10 @@ class GetAnalysisResultUseCase {
       letter: letter,
     );
   }
+
+  /// Obtiene el resultado del análisis usando el practiceId
+  Future<AnalysisResult> getByPracticeId(String practiceId) async {
+    return await repository.getAnalysisResultByPracticeId(practiceId);
+  }
 }
 

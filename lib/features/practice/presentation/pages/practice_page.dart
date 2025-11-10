@@ -15,7 +15,6 @@ class PracticePage extends ConsumerStatefulWidget {
     required this.letter,
   });
 
-  // Constructor alternativo para compatibilidad con código existente
   factory PracticePage.fromPracticeItem({
     required PracticeItem practiceItem,
   }) {
@@ -32,45 +31,46 @@ class _PracticePageState extends ConsumerState<PracticePage> {
     final practiceState = ref.watch(practiceProvider(widget.letter));
     final practiceNotifier = ref.read(practiceProvider(widget.letter).notifier);
 
-    // Escuchar cambios de estado para navegar a resultados
     ref.listen<practice_domain.PracticeState>(
       practiceProvider(widget.letter),
       (previous, next) {
         if (next.status == practice_domain.PracticeStatus.analysisComplete &&
-            next.selectedImagePath != null) {
-          // Navegar a resultados usando Navigator
+            next.practiceId != null) {
           Navigator.of(context).pushNamed(
             '/results',
             arguments: {
-              'imagePath': next.selectedImagePath!,
-              'letter': widget.letter,
+              'practiceId': next.practiceId!,
             },
           );
         }
       },
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: Text('Practicar Letra "${widget.letter}"'),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
         ),
-        title: Text('Practicar Letra "${widget.letter}"'),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
+        body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Tarjeta de referencia
             ReferenceLetterCard(letter: widget.letter),
             const SizedBox(height: 25),
-            
-            // Sección de captura
             CaptureSection(
               imagePath: practiceState.selectedImagePath,
               onTakePhoto: () => practiceNotifier.pickImageFromCamera(),
@@ -78,24 +78,16 @@ class _PracticePageState extends ConsumerState<PracticePage> {
               onRemoveImage: () => practiceNotifier.removeImage(),
             ),
             const SizedBox(height: 25),
-            
-            // Botón de analizar
             _buildAnalyzeButton(practiceState, practiceNotifier),
-            
-            // Mostrar progreso si está analizando
             if (practiceState.status == practice_domain.PracticeStatus.analyzing)
               _buildAnalyzingProgress(),
-            
-            // Mostrar error si hay
             if (practiceState.errorMessage != null)
               _buildErrorWidget(practiceState.errorMessage!),
-            
             const SizedBox(height: 25),
-            
-            // Tarjeta de consejos
             const TipsCard(),
           ],
         ),
+      ),
       ),
     );
   }

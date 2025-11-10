@@ -1,6 +1,9 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/services/session_service.dart';
+import '../../data/repositories/auth_repository_impl.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -45,12 +48,34 @@ class _SplashPageState extends State<SplashPage>
 
     _controller.forward();
 
-    // Navegar a Login después de 3 segundos
-    Future.delayed(AppConstants.splashDuration, () {
+    // Verificar si hay usuario autenticado y navegar
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    await Future.delayed(AppConstants.splashDuration);
+    if (!mounted) return;
+
+    try {
+      final sessionService = SessionService();
+      await sessionService.checkSessionTimeout();
+      
+      final authRepository = AuthRepositoryImpl();
+      final user = await authRepository.getCurrentUser();
+      
+      if (mounted) {
+        if (user != null) {
+          await sessionService.resetSession();
+          Navigator.of(context).pushReplacementNamed('/home');
+        } else {
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+      }
+    } catch (e) {
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/login');
       }
-    });
+    }
   }
 
   @override
@@ -163,30 +188,61 @@ class _SplashPageState extends State<SplashPage>
     return Container(
       width: 120,
       height: 120,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary,
-            AppColors.secondary,
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: const Icon(
-        Icons.edit,
-        size: 60,
-        color: AppColors.onPrimary,
+      child: CustomPaint(
+        painter: GeometricLogoPainter(),
       ),
     );
   }
+}
+
+class GeometricLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 3;
+
+    // Crear forma geométrica abstracta (estrella/compás)
+    final path = Path();
+    
+    // Dibujar una estrella de 4 puntas
+    final points = 8;
+    for (int i = 0; i < points; i++) {
+      final angle = (i * 2 * 3.14159) / points - 3.14159 / 2;
+      final r = i % 2 == 0 ? radius : radius * 0.5;
+      final x = center.dx + r * cos(angle);
+      final y = center.dy + r * sin(angle);
+      
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+
+    // Gradiente de rosa a verde
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        AppColors.primary.withOpacity(0.8),
+        AppColors.secondary.withOpacity(0.8),
+      ],
+    );
+
+    final paint = Paint()
+      ..shader = gradient.createShader(
+        Rect.fromCircle(center: center, radius: radius),
+      )
+      ..style = PaintingStyle.fill;
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(GeometricLogoPainter oldDelegate) => false;
+  
+  double cos(double angle) => math.cos(angle);
+  double sin(double angle) => math.sin(angle);
 }
 

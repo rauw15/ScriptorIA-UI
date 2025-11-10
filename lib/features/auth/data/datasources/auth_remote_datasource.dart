@@ -112,10 +112,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       final userData = response.data['user'] ?? response.data;
-      final token = response.data['token'] ?? response.data['accessToken'];
+      final token = response.data['access_token'] ?? 
+                    response.data['token'] ?? 
+                    response.data['accessToken'];
 
       if (token != null) {
         await apiClient.saveToken(token);
+        // Guardar datos del usuario para uso offline
+        await apiClient.saveUserData(userData);
       }
 
       return UserModel.fromJson(userData);
@@ -141,10 +145,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       final userData = response.data['user'] ?? response.data;
-      final token = response.data['token'] ?? response.data['accessToken'];
+      final token = response.data['access_token'] ?? 
+                    response.data['token'] ?? 
+                    response.data['accessToken'];
 
       if (token != null) {
         await apiClient.saveToken(token);
+        await apiClient.saveUserData(userData);
       }
 
       return UserModel.fromJson(userData);
@@ -173,17 +180,37 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return null;
       }
 
-      final response = await apiClient.get('${AppConstants.authEndpoint}/me');
-      final userData = response.data['user'] ?? response.data;
-      
-      return UserModel.fromJson(userData);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401) {
-        await apiClient.deleteToken();
+      try {
+        final response = await apiClient.get('${AppConstants.authEndpoint}/me');
+        final userData = response.data['user'] ?? response.data;
+        await apiClient.saveUserData(userData);
+        return UserModel.fromJson(userData);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401 || e.response?.statusCode == 404) {
+          final savedUserData = await apiClient.getUserData();
+          if (savedUserData != null) {
+            return UserModel.fromJson(savedUserData);
+          }
+          await apiClient.deleteToken();
+          return null;
+        }
+        final savedUserData = await apiClient.getUserData();
+        if (savedUserData != null) {
+          return UserModel.fromJson(savedUserData);
+        }
+        return null;
+      } catch (e) {
+        final savedUserData = await apiClient.getUserData();
+        if (savedUserData != null) {
+          return UserModel.fromJson(savedUserData);
+        }
         return null;
       }
-      return null;
     } catch (e) {
+      final savedUserData = await apiClient.getUserData();
+      if (savedUserData != null) {
+        return UserModel.fromJson(savedUserData);
+      }
       return null;
     }
   }

@@ -39,11 +39,21 @@ class _HomePageState extends State<HomePage> {
       final user = await _authRepository.getCurrentUser();
       if (user != null && mounted) {
         setState(() {
-          userName = user.name ?? user.email.split('@')[0];
+          // Usar name si está disponible, sino username, sino email sin @
+          userName = user.name?.isNotEmpty == true 
+              ? user.name! 
+              : (user.email.isNotEmpty 
+                  ? user.email.split('@')[0] 
+                  : 'Usuario');
         });
       }
     } catch (e) {
       // Si no hay usuario, mantener el nombre por defecto
+      if (mounted) {
+        setState(() {
+          userName = 'Usuario';
+        });
+      }
     }
   }
 
@@ -78,10 +88,19 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onNavItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-    // TODO: Navegar a diferentes pantallas según el índice
+    if (index == _currentIndex) return; // Ya estamos en esa pantalla
+    
+    switch (index) {
+      case 0:
+        // Ya estamos en Home
+        break;
+      case 1:
+        Navigator.of(context).pushReplacementNamed('/statistics');
+        break;
+      case 2:
+        Navigator.of(context).pushReplacementNamed('/profile');
+        break;
+    }
   }
 
   @override
@@ -111,10 +130,7 @@ class _HomePageState extends State<HomePage> {
                         title: 'Letras del Alfabeto',
                         showSeeAll: true,
                         onSeeAll: () {
-                          // TODO: Navegar a pantalla de todas las letras
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Ver todas las letras')),
-                          );
+                          Navigator.of(context).pushNamed('/all-letters');
                         },
                       ),
                       const SizedBox(height: 15),

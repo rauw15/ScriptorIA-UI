@@ -1,9 +1,16 @@
 import '../../domain/entities/practice_item.dart';
 import '../../domain/entities/user_stats.dart';
+import '../../../practice/data/datasources/trace_service_datasource.dart';
+import '../../../../core/network/api_client.dart';
 
-/// Repositorio simulado para gestionar prácticas
-/// En producción, esto se conectaría con un backend real
 class PracticeRepositoryImpl {
+  final TraceServiceDataSource? _traceServiceDataSource;
+
+  PracticeRepositoryImpl({
+    TraceServiceDataSource? traceServiceDataSource,
+  }) : _traceServiceDataSource = traceServiceDataSource ??
+            TraceServiceDataSourceImpl(ApiClient());
+
   // Datos simulados de letras - Todo empieza en cero (pending)
   static final List<PracticeItem> _letters = [
     const PracticeItem(
@@ -88,9 +95,32 @@ class PracticeRepositoryImpl {
 
   /// Calcula las estadísticas del usuario
   Future<UserStats> getUserStats() async {
-    // Simular delay de red
-    await Future.delayed(const Duration(milliseconds: 300));
-    
+    try {
+      if (_traceServiceDataSource != null) {
+        final history = await _traceServiceDataSource.getPracticeHistory();
+        final practicesWithScore = history
+            .where((p) => p.puntuacionGeneral != null)
+            .toList();
+
+        final completedCount = practicesWithScore.length;
+        final totalScore = practicesWithScore
+            .map((p) => p.puntuacionGeneral!)
+            .fold(0, (sum, score) => sum + score);
+        final averageScore = completedCount > 0 ? totalScore / completedCount : 0.0;
+        final achievements = _calculateAchievements(completedCount);
+
+        return UserStats(
+          totalPractices: _letters.length + _numbers.length,
+          completedPractices: completedCount,
+          inProgressPractices: 0,
+          pendingPractices: (_letters.length + _numbers.length) - completedCount,
+          averageScore: averageScore,
+          totalAchievements: achievements,
+        );
+      }
+    } catch (e) {
+    }
+
     final allItems = [..._letters, ..._numbers];
     
     int completedCount = 0;
@@ -102,7 +132,6 @@ class PracticeRepositoryImpl {
     for (final item in allItems) {
       switch (item.status) {
         case PracticeStatus.completed:
-          // Solo contar como completada si tiene score >= 70
           if (item.isCompletedSuccessfully) {
             completedCount++;
             if (item.score != null) {
@@ -123,8 +152,6 @@ class PracticeRepositoryImpl {
     }
 
     final averageScore = scoredItems > 0 ? totalScore / scoredItems : 0.0;
-    
-    // Calcular logros basados en prácticas completadas
     final achievements = _calculateAchievements(completedCount);
 
     return UserStats(

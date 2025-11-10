@@ -7,10 +7,17 @@ class PermissionService {
   }
 
   static Future<bool> requestPhotoLibraryPermission() async {
-    final status = await Permission.photos.request();
-    if (status.isGranted) return true;
+    if (await Permission.photos.isGranted) {
+      return true;
+    }
     
-    // Fallback para Android
+    final photosStatus = await Permission.photos.request();
+    if (photosStatus.isGranted) return true;
+    
+    if (photosStatus.isPermanentlyDenied) {
+      return false;
+    }
+    
     final storageStatus = await Permission.storage.request();
     return storageStatus.isGranted;
   }
