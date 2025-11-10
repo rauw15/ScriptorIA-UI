@@ -36,6 +36,24 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^6.1.0
   shared_preferences: ^2.2.2
+  
+  # State Management
+  flutter_riverpod: ^2.4.9
+  
+  # Navigation
+  go_router: ^13.0.0
+  
+  # Camera & Image Picker
+  camera: ^0.10.5+9
+  image_picker: ^1.0.7
+  
+  # Permissions
+  permission_handler: ^11.1.0
+  
+  # Utils
+  equatable: ^2.0.5
+  path_provider: ^2.1.1
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:

@@ -1,27 +1,27 @@
-/// Clase base para errores de la aplicación
-abstract class Failure {
+import 'package:equatable/equatable.dart';
+
+abstract class Failure extends Equatable {
   final String message;
   
   const Failure(this.message);
+  
+  @override
+  List<Object> get props => [message];
 }
 
-/// Error de servidor
 class ServerFailure extends Failure {
   const ServerFailure(super.message);
 }
 
-/// Error de red
 class NetworkFailure extends Failure {
   const NetworkFailure(super.message);
 }
 
-/// Error de autenticación
-class AuthFailure extends Failure {
-  const AuthFailure(super.message);
+class CameraFailure extends Failure {
+  const CameraFailure(super.message);
 }
 
-/// Error de validación
-class ValidationFailure extends Failure {
-  const ValidationFailure(super.message);
+class PermissionFailure extends Failure {
+  const PermissionFailure(super.message);
 }
 
