@@ -29,12 +29,16 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as String,
-      email: json['email'] as String,
-      password: json['password'] as String,
-      name: json['name'] as String,
-      photoUrl: json['photoUrl'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      email: json['email'] as String? ?? '',
+      password: json['password'] as String? ?? '', // El API no debería devolver esto, pero lo mantenemos por compatibilidad
+      name: json['name'] as String? ?? json['username'] as String? ?? '',
+      photoUrl: json['photoUrl'] as String? ?? json['photo'] as String?,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : DateTime.now(),
     );
   }
 }

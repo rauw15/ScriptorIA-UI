@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../../domain/entities/analysis_result.dart';
 import '../../domain/usecases/get_analysis_result_usecase.dart';
 import '../../data/repositories/results_repository_impl.dart';

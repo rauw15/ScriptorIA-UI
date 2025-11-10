@@ -11,5 +11,8 @@ class AppConstants {
   
   // Validaciones
   static const int minPasswordLength = 8;
+  
+  // API Configuration
+  static const String apiBaseUrl = 'http://192.168.70.3:8000';
+  static const String authEndpoint = '';
 }
-

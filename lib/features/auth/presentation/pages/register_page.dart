@@ -15,23 +15,56 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _ageController = TextEditingController();
   final _authRepository = AuthRepositoryImpl();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   bool _acceptTerms = false;
   String? _errorMessage;
+  
+  // Valores para los dropdowns
+  String? _selectedEntorno;
+  String? _selectedNivelEducativo;
+  
+  // Opciones para los dropdowns
+  static const List<String> _entornos = [
+    'casa',
+    'primaria',
+    'secundaria',
+    'preescolar',
+    'preparatoria',
+    'universidad',
+    'centro_rehabilitacion',
+  ];
+  
+  static const List<String> _nivelesEducativos = [
+    'ninguno',
+    'analfabeta',
+    'educacion_inicial',
+    'preescolar',
+    'primaria',
+    'secundaria',
+    'bachillerato_general',
+    'bachillerato_tecnico',
+    'bachillerato_profesional',
+    'licenciatura',
+    'especialidad',
+    'maestria',
+    'doctorado',
+  ];
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -44,6 +77,28 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
+      if (_selectedEntorno == null) {
+        setState(() {
+          _errorMessage = 'Por favor selecciona un entorno';
+        });
+        return;
+      }
+
+      if (_selectedNivelEducativo == null) {
+        setState(() {
+          _errorMessage = 'Por favor selecciona un nivel educativo';
+        });
+        return;
+      }
+
+      final age = int.tryParse(_ageController.text.trim());
+      if (age == null || age < 1 || age > 120) {
+        setState(() {
+          _errorMessage = 'Por favor ingresa una edad válida';
+        });
+        return;
+      }
+
       setState(() {
         _isLoading = true;
         _errorMessage = null;
@@ -51,11 +106,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
       try {
         await _authRepository.register(
+          username: _usernameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          name: _nameController.text.trim().isEmpty 
-              ? null 
-              : _nameController.text.trim(),
+          age: age,
+          entorno: _selectedEntorno!,
+          nivelEducativo: _selectedNivelEducativo!,
         );
 
         if (mounted) {
@@ -171,13 +227,22 @@ class _RegisterPageState extends State<RegisterPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Campo de nombre
+        // Campo de username
         CustomTextField(
-          controller: _nameController,
-          label: 'Nombre completo',
-          hint: 'Tu nombre',
+          controller: _usernameController,
+          label: 'Nombre de usuario',
+          hint: 'juan_perez',
           icon: Icons.person_outline,
-          keyboardType: TextInputType.name,
+          keyboardType: TextInputType.text,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Por favor ingresa un nombre de usuario';
+            }
+            if (value.contains(' ')) {
+              return 'El nombre de usuario no puede contener espacios';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 20),
         // Campo de email
@@ -254,6 +319,53 @@ class _RegisterPageState extends State<RegisterPage> {
             }
             return null;
           },
+        ),
+        const SizedBox(height: 20),
+        // Campo de edad
+        CustomTextField(
+          controller: _ageController,
+          label: 'Edad',
+          hint: '25',
+          icon: Icons.calendar_today_outlined,
+          keyboardType: TextInputType.number,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Por favor ingresa tu edad';
+            }
+            final age = int.tryParse(value);
+            if (age == null || age < 1 || age > 120) {
+              return 'Por favor ingresa una edad válida';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 20),
+        // Dropdown de entorno
+        _buildDropdown(
+          label: 'Entorno',
+          value: _selectedEntorno,
+          items: _entornos,
+          onChanged: (value) {
+            setState(() {
+              _selectedEntorno = value;
+            });
+          },
+          icon: Icons.location_on_outlined,
+          hint: 'Selecciona tu entorno',
+        ),
+        const SizedBox(height: 20),
+        // Dropdown de nivel educativo
+        _buildDropdown(
+          label: 'Nivel educativo',
+          value: _selectedNivelEducativo,
+          items: _nivelesEducativos,
+          onChanged: (value) {
+            setState(() {
+              _selectedNivelEducativo = value;
+            });
+          },
+          icon: Icons.school_outlined,
+          hint: 'Selecciona tu nivel educativo',
         ),
         const SizedBox(height: 20),
         // Checkbox de términos
@@ -340,6 +452,69 @@ class _RegisterPageState extends State<RegisterPage> {
           text: 'Registrarse con Google',
           icon: 'G',
           onPressed: _isLoading ? null : _handleGoogleRegister,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required Function(String?) onChanged,
+    required IconData icon,
+    required String hint,
+  }) {
+    // Función para convertir el valor a texto legible
+    String _formatText(String text) {
+      return text
+          .split('_')
+          .map((word) => word[0].toUpperCase() + word.substring(1))
+          .join(' ');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.onSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: value,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Icon(
+                icon,
+                color: AppColors.outline,
+                size: 20,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 16,
+            ),
+          ),
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(_formatText(item)),
+            );
+          }).toList(),
+          onChanged: onChanged,
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Por favor selecciona una opción';
+            }
+            return null;
+          },
         ),
       ],
     );
