@@ -58,11 +58,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Verificar que el usuario siga autenticado
+      final currentUser = await _authRepository.getCurrentUser();
+      if (currentUser == null) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+        return;
+      }
+
       final letters = await _repository.getLetters();
       final numbers = await _repository.getNumbers();
       final stats = await _repository.getUserStats();
@@ -76,10 +90,21 @@ class _HomePageState extends State<HomePage> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      final errorText = e.toString();
+      // Si el error es de autenticación, redirigir al login.
+      if (errorText.contains('Usuario no autenticado') ||
+          errorText.contains('No autorizado') ||
+          errorText.contains('401')) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al cargar datos: $e')),
         );
@@ -195,6 +220,10 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
+    // Mostrar solo un subconjunto (por ejemplo, 6 letras) en la pantalla
+    // principal. La página de "Todas las letras" mostrará el listado completo.
+    final displayLetters = _letters.length > 6 ? _letters.take(6).toList() : _letters;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -204,9 +233,9 @@ class _HomePageState extends State<HomePage> {
         mainAxisSpacing: 12,
         childAspectRatio: 1,
       ),
-      itemCount: _letters.length,
+      itemCount: displayLetters.length,
       itemBuilder: (context, index) {
-        final letter = _letters[index];
+        final letter = displayLetters[index];
         return LetterCard(
           practiceItem: letter,
           onTap: () async {

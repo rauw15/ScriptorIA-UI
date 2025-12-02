@@ -7,7 +7,7 @@ import '../../../practice/data/models/practice_detail_model.dart';
 
 class ResultsRepositoryImpl implements ResultsRepository {
   final TraceServiceDataSource traceServiceDataSource;
-  static const int maxPollingAttempts = 30;
+  static const int maxPollingAttempts = 90;
   static const Duration pollingInterval = Duration(seconds: 2);
 
   ResultsRepositoryImpl(this.traceServiceDataSource);

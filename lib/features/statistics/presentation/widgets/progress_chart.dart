@@ -29,8 +29,10 @@ class ProgressChart extends StatelessWidget {
                 final maxCount = dailyProgress
                     .map((p) => p.practicesCount)
                     .reduce((a, b) => a > b ? a : b);
+                // Altura máxima reducida para evitar overflows verticales
+                const double maxBarHeight = 130.0;
                 final height = maxCount > 0
-                    ? (progress.practicesCount / maxCount) * 150
+                    ? (progress.practicesCount / maxCount) * maxBarHeight
                     : 0.0;
 
                 return Column(

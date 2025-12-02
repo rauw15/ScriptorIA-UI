@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'dart:convert';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/constants.dart';
 import '../models/user_model.dart';
@@ -38,17 +39,31 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String nivelEducativo,
   }) async {
     try {
+      // Validar y limpiar la contraseña antes de enviarla
+      final cleanPassword = password.trim();
+      
+      // Validar longitud mínima
+      if (cleanPassword.length < 8) {
+        throw Exception('La contraseña debe tener al menos 8 caracteres');
+      }
+      
+      // Validar longitud máxima (72 bytes para bcrypt)
+      final passwordBytes = utf8.encode(cleanPassword);
+      if (passwordBytes.length > 72) {
+        throw Exception('La contraseña no puede tener más de 72 bytes. Por favor, usa una contraseña más corta.');
+      }
+      
       final requestData = {
-        'username': username,
-        'email': email,
-        'password': password,
+        'username': username.trim(),
+        'email': email.trim(),
+        'password': cleanPassword, // Usar la contraseña limpia
         'age': age,
         'entorno': entorno,
         'nivel_educativo': nivelEducativo,
       };
       
       final response = await apiClient.post(
-        '${AppConstants.authEndpoint}/register',
+        '${AppConstants.apiBaseUrl}${AppConstants.authEndpoint}/register',
         data: requestData,
       );
 
@@ -104,17 +119,30 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel> signInWithEmail(String email, String password) async {
     try {
       final response = await apiClient.post(
-        '${AppConstants.authEndpoint}/login',
+        '${AppConstants.apiBaseUrl}${AppConstants.authEndpoint}/login',
         data: {
           'email': email,
           'password': password,
         },
       );
 
-      final userData = response.data['user'] ?? response.data;
+      // El backend ahora devuelve: { access_token, token_type, user: {...} }
       final token = response.data['access_token'] ?? 
                     response.data['token'] ?? 
                     response.data['accessToken'];
+
+      // Obtener datos del usuario de la respuesta
+      var userData = response.data['user'];
+      
+      // Si no hay user en la respuesta, intentar construir desde otros campos
+      if (userData == null) {
+        userData = {
+          'id': response.data['user_id'] ?? response.data['id'],
+          'email': email,
+          'username': response.data['username'] ?? email.split('@')[0],
+          'name': response.data['username'] ?? response.data['name'] ?? email.split('@')[0],
+        };
+      }
 
       if (token != null) {
         await apiClient.saveToken(token);
@@ -139,35 +167,18 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<UserModel> signInWithGoogle() async {
-    try {
-      final response = await apiClient.post(
-        '${AppConstants.authEndpoint}/google',
-      );
-
-      final userData = response.data['user'] ?? response.data;
-      final token = response.data['access_token'] ?? 
-                    response.data['token'] ?? 
-                    response.data['accessToken'];
-
-      if (token != null) {
-        await apiClient.saveToken(token);
-        await apiClient.saveUserData(userData);
-      }
-
-      return UserModel.fromJson(userData);
-    } catch (e) {
-      if (e is Exception) rethrow;
-      throw Exception('Error al iniciar sesión con Google: ${e.toString()}');
-    }
+    // TODO: Implementar cuando el backend tenga soporte para Google OAuth
+    throw Exception('Inicio de sesión con Google no implementado aún');
   }
 
   @override
   Future<void> signOut() async {
     try {
-      await apiClient.post('${AppConstants.authEndpoint}/logout');
+      // El backend no tiene endpoint /logout, solo eliminamos el token localmente
+      // En el futuro se puede implementar invalidación de tokens en el servidor
+      await apiClient.deleteToken();
     } catch (e) {
-      // Ignorar errores del logout remoto
-    } finally {
+      // Asegurarse de eliminar el token incluso si hay error
       await apiClient.deleteToken();
     }
   }
@@ -181,8 +192,17 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
 
       try {
-        final response = await apiClient.get('${AppConstants.authEndpoint}/me');
-        final userData = response.data['user'] ?? response.data;
+        final response = await apiClient.get('${AppConstants.apiBaseUrl}${AppConstants.authEndpoint}/me');
+        // El backend devuelve UserDetailResponseDTO directamente
+        final responseData = response.data;
+        final userData = {
+          'id': responseData['user_id'] ?? responseData['id'],
+          'email': responseData['email'],
+          'username': responseData['username'],
+          'name': responseData['username'], // Usamos username como name
+          'password': '',
+          'createdAt': DateTime.now().toIso8601String(),
+        };
         await apiClient.saveUserData(userData);
         return UserModel.fromJson(userData);
       } on DioException catch (e) {

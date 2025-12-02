@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/statistics_data.dart';
 import '../../data/repositories/statistics_repository_impl.dart';
+import '../../../auth/data/repositories/auth_repository_impl.dart';
 import '../widgets/statistics_summary.dart';
 import '../widgets/progress_chart.dart';
 import '../../../home/presentation/widgets/bottom_navigation.dart';
@@ -15,6 +16,7 @@ class StatisticsPage extends StatefulWidget {
 
 class _StatisticsPageState extends State<StatisticsPage> {
   final StatisticsRepositoryImpl _repository = StatisticsRepositoryImpl();
+  final AuthRepositoryImpl _authRepository = AuthRepositoryImpl();
   int _currentIndex = 1;
   
   bool _isLoading = true;
@@ -27,11 +29,25 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   Future<void> _loadStatistics() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Verificar que el usuario siga autenticado
+      final currentUser = await _authRepository.getCurrentUser();
+      if (currentUser == null) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+        return;
+      }
+
       final data = await _repository.getStatisticsData();
       if (mounted) {
         setState(() {
@@ -40,10 +56,20 @@ class _StatisticsPageState extends State<StatisticsPage> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      final errorText = e.toString();
+      if (errorText.contains('Usuario no autenticado') ||
+          errorText.contains('No autorizado') ||
+          errorText.contains('401')) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al cargar estadísticas: $e')),
         );

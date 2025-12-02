@@ -76,6 +76,7 @@ class _PracticePageState extends ConsumerState<PracticePage> {
               onTakePhoto: () => practiceNotifier.pickImageFromCamera(),
               onPickFromGallery: () => practiceNotifier.pickImageFromGallery(),
               onRemoveImage: () => practiceNotifier.removeImage(),
+              onCanvasComplete: (imagePath) => practiceNotifier.setImageFromCanvas(imagePath),
             ),
             const SizedBox(height: 25),
             _buildAnalyzeButton(practiceState, practiceNotifier),

@@ -32,8 +32,10 @@ class BottomNavigation extends StatelessWidget {
       ),
       child: SafeArea(
         child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          // Altura ligeramente mayor y menos padding vertical
+          // para evitar pequeños overflows en algunos dispositivos.
+          height: 64,
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [

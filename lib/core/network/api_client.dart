@@ -14,8 +14,8 @@ class ApiClient {
     _dio = Dio(
       BaseOptions(
         baseUrl: AppConstants.apiBaseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 180),
+        receiveTimeout: const Duration(seconds: 180),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -147,10 +147,12 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
   }) async {
+    print('[ApiClient] 🌐 _makeAbsoluteRequest: $method $url');
+    
     final dio = Dio(
       BaseOptions(
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
+        connectTimeout: const Duration(seconds: 180),
+        receiveTimeout: const Duration(seconds: 180),
         headers: {
           'Accept': 'application/json',
         },
@@ -161,21 +163,35 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          print('[ApiClient] 📤 Request: ${options.method} ${options.uri}');
           final token = await _secureStorage.read(key: _tokenKey);
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
+            print('[ApiClient] ✅ Token agregado al header');
+          } else {
+            print('[ApiClient] ⚠️ No hay token disponible');
           }
           // No sobrescribir Content-Type si es FormData (multipart)
           if (options.data is FormData) {
             options.headers.remove('Content-Type');
+            print('[ApiClient] 📎 FormData detectado, Content-Type removido');
           }
           return handler.next(options);
         },
         onError: (error, handler) async {
+          print('[ApiClient] ❌ Error: ${error.type}');
+          print('[ApiClient] 📋 Status: ${error.response?.statusCode}');
+          print('[ApiClient] 📋 Message: ${error.message}');
+          print('[ApiClient] 📋 Response: ${error.response?.data}');
           if (error.response?.statusCode == 401) {
             await _secureStorage.delete(key: _tokenKey);
+            print('[ApiClient] 🔐 Token eliminado por 401');
           }
           return handler.next(error);
+        },
+        onResponse: (response, handler) {
+          print('[ApiClient] ✅ Response: ${response.statusCode} ${response.statusMessage}');
+          return handler.next(response);
         },
       ),
     );

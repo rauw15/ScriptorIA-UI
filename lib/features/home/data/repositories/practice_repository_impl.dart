@@ -11,72 +11,56 @@ class PracticeRepositoryImpl {
   }) : _traceServiceDataSource = traceServiceDataSource ??
             TraceServiceDataSourceImpl(ApiClient());
 
-  // Datos simulados de letras - Todo empieza en cero (pending)
-  static final List<PracticeItem> _letters = [
+  // Letras mayúsculas (A-Z)
+  static final List<PracticeItem> _uppercaseLetters = List.generate(26, (index) {
+    final letter = String.fromCharCode(65 + index); // A-Z
+    return PracticeItem(
+      id: 'letter_uppercase_$letter',
+      text: letter,
+      status: PracticeStatus.pending,
+    );
+  });
+
+  // Letras minúsculas (a-z)
+  static final List<PracticeItem> _lowercaseLetters = List.generate(26, (index) {
+    final letter = String.fromCharCode(97 + index); // a-z
+    return PracticeItem(
+      id: 'letter_lowercase_$letter',
+      text: letter,
+      status: PracticeStatus.pending,
+    );
+  });
+
+  // Letras especiales soportadas por el modelo (Ñ/ñ).
+  // Otras como CH, LL no se añaden aún porque el backend
+  // valida que letter_char tenga longitud 1.
+  static final List<PracticeItem> _specialLetters = [
     const PracticeItem(
-      id: 'letter_A',
-      text: 'A',
+      id: 'letter_uppercase_Ñ',
+      text: 'Ñ',
       status: PracticeStatus.pending,
     ),
     const PracticeItem(
-      id: 'letter_B',
-      text: 'B',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'letter_C',
-      text: 'C',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'letter_D',
-      text: 'D',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'letter_E',
-      text: 'E',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'letter_F',
-      text: 'F',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'letter_G',
-      text: 'G',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'letter_H',
-      text: 'H',
+      id: 'letter_lowercase_ñ',
+      text: 'ñ',
       status: PracticeStatus.pending,
     ),
   ];
 
-  // Datos simulados de números - Todo empieza en cero (pending)
-  static final List<PracticeItem> _numbers = [
-    const PracticeItem(
-      id: 'number_1',
-      text: '1',
+  // Números (0-9)
+  static final List<PracticeItem> _numbers = List.generate(10, (index) {
+    return PracticeItem(
+      id: 'number_$index',
+      text: index.toString(),
       status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'number_2',
-      text: '2',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'number_3',
-      text: '3',
-      status: PracticeStatus.pending,
-    ),
-    const PracticeItem(
-      id: 'number_4',
-      text: '4',
-      status: PracticeStatus.pending,
-    ),
+    );
+  });
+
+  // Lista combinada de todas las letras (mayúsculas primero, luego minúsculas)
+  static final List<PracticeItem> _letters = [
+    ..._uppercaseLetters,
+    ..._lowercaseLetters,
+    ..._specialLetters,
   ];
 
   /// Obtiene todas las letras
@@ -179,10 +163,22 @@ class PracticeRepositoryImpl {
     await Future.delayed(const Duration(milliseconds: 200));
     
     // Actualizar en la lista correspondiente
-    if (item.id.startsWith('letter_')) {
+    if (item.id.startsWith('letter_uppercase_') || item.id.startsWith('letter_lowercase_')) {
       final index = _letters.indexWhere((l) => l.id == item.id);
       if (index != -1) {
         _letters[index] = item;
+      }
+      // También actualizar en la lista específica
+      if (item.id.startsWith('letter_uppercase_')) {
+        final uppercaseIndex = _uppercaseLetters.indexWhere((l) => l.id == item.id);
+        if (uppercaseIndex != -1) {
+          _uppercaseLetters[uppercaseIndex] = item;
+        }
+      } else {
+        final lowercaseIndex = _lowercaseLetters.indexWhere((l) => l.id == item.id);
+        if (lowercaseIndex != -1) {
+          _lowercaseLetters[lowercaseIndex] = item;
+        }
       }
     } else if (item.id.startsWith('number_')) {
       final index = _numbers.indexWhere((n) => n.id == item.id);

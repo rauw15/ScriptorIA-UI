@@ -48,6 +48,9 @@ dependencies:
   camera: ^0.10.5+9
   image_picker: ^1.0.7
   
+  # Canvas/Drawing
+  signature: ^5.4.0
+  
   # Permissions
   permission_handler: ^12.0.1
   

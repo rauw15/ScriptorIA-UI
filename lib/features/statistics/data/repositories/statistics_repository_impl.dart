@@ -2,22 +2,56 @@ import '../../domain/repositories/statistics_repository.dart';
 import '../../domain/entities/statistics_data.dart';
 import '../../../home/data/repositories/practice_repository_impl.dart';
 import '../../../practice/data/datasources/trace_service_datasource.dart';
+import '../../../auth/data/repositories/auth_repository_impl.dart';
+import '../datasources/progress_remote_datasource.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../home/domain/entities/user_stats.dart';
 
 class StatisticsRepositoryImpl implements StatisticsRepository {
   final PracticeRepositoryImpl _practiceRepository;
   final TraceServiceDataSource _traceServiceDataSource;
+  final AuthRepositoryImpl _authRepository;
+  final ProgressRemoteDataSource _progressDataSource;
 
   StatisticsRepositoryImpl({
     PracticeRepositoryImpl? practiceRepository,
     TraceServiceDataSource? traceServiceDataSource,
+    AuthRepositoryImpl? authRepository,
+    ProgressRemoteDataSource? progressDataSource,
   })  : _practiceRepository = practiceRepository ?? PracticeRepositoryImpl(),
         _traceServiceDataSource = traceServiceDataSource ??
-            TraceServiceDataSourceImpl(ApiClient());
+            TraceServiceDataSourceImpl(ApiClient()),
+        _authRepository = authRepository ?? AuthRepositoryImpl(),
+        _progressDataSource =
+            progressDataSource ?? ProgressRemoteDataSource();
 
   @override
   Future<StatisticsData> getStatisticsData() async {
-    final stats = await _practiceRepository.getUserStats();
+    // Stats base calculadas localmente a partir de letras/números
+    final localStats = await _practiceRepository.getUserStats();
+
+    // Intentar enriquecer con métricas reales desde progress-service
+    UserStats finalStats = localStats;
+    try {
+      final user = await _authRepository.getCurrentUser();
+      if (user != null) {
+        final userMetrics =
+            await _progressDataSource.getUserMetrics(user.id);
+        // Combinar: usar totalPractices y totalAchievements del servicio,
+        // manteniendo el resto de campos calculados localmente.
+        finalStats = UserStats(
+          totalPractices: userMetrics.totalPractices,
+          completedPractices: localStats.completedPractices,
+          inProgressPractices: localStats.inProgressPractices,
+          pendingPractices: localStats.pendingPractices,
+          averageScore: localStats.averageScore,
+          totalAchievements: userMetrics.totalAchievements,
+        );
+      }
+    } catch (_) {
+      // Si falla progress-service, seguimos usando sólo localStats.
+      finalStats = localStats;
+    }
 
     try {
       final history = await _traceServiceDataSource.getPracticeHistory();
@@ -30,14 +64,14 @@ class StatisticsRepositoryImpl implements StatisticsRepository {
       final averageScoreByLetter = _calculateAverageScoreByLetter(practicesWithScore);
 
       return StatisticsData(
-        stats: stats,
+        stats: finalStats,
         dailyProgress: dailyProgress,
         practicesByLetter: practicesByLetter,
         averageScoreByLetter: averageScoreByLetter,
       );
     } catch (e) {
       return StatisticsData(
-        stats: stats,
+        stats: finalStats,
         dailyProgress: _generateEmptyDailyProgress(),
         practicesByLetter: {},
         averageScoreByLetter: {},

@@ -37,15 +37,39 @@ class TraceServiceDataSourceImpl implements TraceServiceDataSource {
     required String letter,
   }) async {
     try {
+      print('[UI] 🚀 Iniciando uploadPractice');
+      print('[UI] 📝 Letra: $letter');
+      print('[UI] 📷 Image path: $imagePath');
+      
       final token = await apiClient.getToken();
       if (token == null) {
+        print('[UI] ❌ No hay token de autenticación');
         throw Exception('No estás autenticado. Por favor, inicia sesión antes de subir una práctica.');
+      }
+      print('[UI] ✅ Token encontrado (primeros 20 chars): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+      
+      // Validar que la letra sea un carácter válido (a-z, A-Z, 0-9)
+      if (letter.length != 1) {
+        throw Exception('La letra debe ser exactamente un carácter');
+      }
+      final validChars = RegExp(r'^[a-zA-Z0-9]$');
+      if (!validChars.hasMatch(letter)) {
+        throw Exception('La letra debe ser una letra (a-z, A-Z) o un número (0-9)');
       }
       
       final file = File(imagePath);
       if (!await file.exists()) {
+        print('[UI] ❌ El archivo no existe: $imagePath');
         throw Exception('La imagen no existe');
       }
+      
+      final fileSize = await file.length();
+      print('[UI] ✅ Archivo existe, tamaño: $fileSize bytes');
+
+      // Endpoint correcto en FastAPI: POST /practices (sin barra final)
+      final url = '${AppConstants.traceServiceBaseUrl}${AppConstants.practicesEndpoint}';
+      print('[UI] 🌐 URL completa: $url');
+      print('[UI] 📤 Preparando FormData...');
 
       final formData = FormData.fromMap({
         'letra': letter,
@@ -55,22 +79,45 @@ class TraceServiceDataSourceImpl implements TraceServiceDataSource {
         ),
       });
 
+      print('[UI] 📤 Enviando petición POST a: $url');
       final response = await apiClient.post(
-        '${AppConstants.traceServiceBaseUrl}${AppConstants.practicesEndpoint}/',
+        url,
         data: formData,
       );
 
+      print('[UI] ✅ Respuesta recibida: Status ${response.statusCode}');
+      print('[UI] 📊 Response data: ${response.data}');
+
       return PracticeResponseModel.fromJson(response.data);
     } on DioException catch (e) {
+      print('[UI] ❌ DioException capturada');
+      print('[UI] 📋 Tipo: ${e.type}');
+      print('[UI] 📋 Status: ${e.response?.statusCode}');
+      print('[UI] 📋 Message: ${e.message}');
+      print('[UI] 📋 Response data: ${e.response?.data}');
+      
+      if (e.type == DioExceptionType.connectionTimeout || 
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        print('[UI] ⏱️ Timeout error');
+        throw Exception('Tiempo de espera agotado. Verifica que el servidor esté corriendo en ${AppConstants.traceServiceBaseUrl}');
+      }
+      
+      if (e.type == DioExceptionType.connectionError) {
+        print('[UI] 🔌 Connection error');
+        throw Exception('No se pudo conectar al servidor. Verifica que:\n1. El trace-service esté corriendo en ${AppConstants.traceServiceBaseUrl}\n2. Tu dispositivo y el servidor estén en la misma red\n3. No haya firewall bloqueando');
+      }
+      
       if (e.response?.statusCode == 404) {
-        final url = '${AppConstants.traceServiceBaseUrl}${AppConstants.practicesEndpoint}/';
-        throw Exception('Endpoint no encontrado (404). URL: $url\nVerifica que:\n1. El trace-service esté corriendo en ${AppConstants.traceServiceBaseUrl}\n2. El endpoint /practices/ exista\n3. Estés autenticado correctamente');
+        final url = '${AppConstants.traceServiceBaseUrl}${AppConstants.practicesEndpoint}';
+        throw Exception('Endpoint no encontrado (404). URL: $url\nVerifica que:\n1. El trace-service esté corriendo en ${AppConstants.traceServiceBaseUrl}\n2. El endpoint /practices exista\n3. Estés autenticado correctamente');
       }
       if (e.response?.statusCode == 401) {
         throw Exception('No autorizado (401). Tu sesión ha expirado. Por favor, inicia sesión nuevamente.');
       }
       throw Exception('Error al subir la práctica: ${e.response?.data ?? e.message}');
     } catch (e) {
+      print('[UI] ❌ Exception general: $e');
       if (e.toString().contains('No estás autenticado')) {
         rethrow;
       }
@@ -103,7 +150,10 @@ class TraceServiceDataSourceImpl implements TraceServiceDataSource {
           .map((json) => PracticeHistoryItemModel.fromJson(json))
           .toList();
     } catch (e) {
-      throw Exception('Error al obtener el historial: ${e.toString()}');
+      // Si el trace-service no está disponible, devolvemos historial vacío
+      // para no bloquear la UI ni la experiencia del usuario.
+      print('Error al obtener el historial (se devolverá lista vacía): $e');
+      return [];
     }
   }
 

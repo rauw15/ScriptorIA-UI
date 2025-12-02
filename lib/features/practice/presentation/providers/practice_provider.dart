@@ -13,11 +13,13 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
   final AnalyzeHandwritingUseCase analyzeHandwritingUseCase;
   final ImagePickerDataSource imagePickerDataSource;
   final CameraDataSource cameraDataSource;
+  final TraceServiceDataSource traceServiceDataSource;
 
   PracticeNotifier({
     required this.analyzeHandwritingUseCase,
     required this.imagePickerDataSource,
     required this.cameraDataSource,
+    required this.traceServiceDataSource,
     required String letter,
   }) : super(PracticeState(letter: letter));
 
@@ -94,6 +96,14 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
     );
   }
 
+  void setImageFromCanvas(String imagePath) {
+    state = state.copyWith(
+      status: PracticeStatus.imageSelected,
+      selectedImagePath: imagePath,
+      errorMessage: null,
+    );
+  }
+
   Future<void> analyzeHandwriting() async {
     if (state.selectedImagePath == null) {
       state = state.copyWith(
@@ -105,19 +115,59 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
 
     try {
       state = state.copyWith(status: PracticeStatus.analyzing);
+      
+      // 1. Subir la práctica al trace-service
       final practiceId = await analyzeHandwritingUseCase(
         imagePath: state.selectedImagePath!,
         letter: state.letter,
       );
       
+      // 2. Actualizar el practiceId pero mantener status como "analyzing"
       state = state.copyWith(
-        status: PracticeStatus.analysisComplete,
         practiceId: practiceId,
+        // NO cambiar a analysisComplete todavía
       );
+      
+      // 3. Hacer polling hasta que el análisis esté completo
+      const maxAttempts = 60; // 2 minutos máximo (60 intentos × 2 segundos)
+      const pollingInterval = Duration(seconds: 2);
+      
+      for (int attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          final practice = await traceServiceDataSource.getPracticeById(practiceId);
+          
+          if (practice.estadoAnalisis == 'completado') {
+            // Análisis completo, ahora sí cambiar el estado
+            state = state.copyWith(
+              status: PracticeStatus.analysisComplete,
+            );
+            return; // Salir del método, el listener navegará a resultados
+          }
+          
+          if (practice.estadoAnalisis == 'error') {
+            throw Exception('Error al procesar el análisis en el servidor');
+          }
+          
+          // Aún pendiente, esperar un poco más antes del siguiente intento
+          if (attempt < maxAttempts - 1) {
+            await Future.delayed(pollingInterval);
+          }
+        } catch (e) {
+          // Si hay error al obtener la práctica, continuar intentando
+          // (puede ser un error temporal de red)
+          if (attempt < maxAttempts - 1) {
+            await Future.delayed(pollingInterval);
+          }
+        }
+      }
+      
+      // Si llegamos aquí, se agotó el tiempo de espera
+      throw Exception('El análisis está tomando más tiempo del esperado. Por favor, verifica más tarde en tu historial.');
+      
     } catch (e) {
       state = state.copyWith(
         status: PracticeStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
     }
   }
@@ -153,6 +203,7 @@ final practiceProvider = StateNotifierProvider.family<PracticeNotifier, Practice
       analyzeHandwritingUseCase: ref.watch(analyzeHandwritingUseCaseProvider),
       imagePickerDataSource: ref.watch(imagePickerDataSourceProvider),
       cameraDataSource: ref.watch(cameraDataSourceProvider),
+      traceServiceDataSource: ref.watch(traceServiceDataSourceProvider),
       letter: letter,
     );
   },
