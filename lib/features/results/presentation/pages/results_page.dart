@@ -4,6 +4,7 @@ import '../providers/results_provider.dart';
 import '../widgets/score_container.dart';
 import '../widgets/metrics_section.dart';
 import '../widgets/feedback_cards.dart';
+import '../../../home/domain/entities/practice_item.dart';
 
 class ResultsPage extends ConsumerWidget {
   final String imagePath;
@@ -112,29 +113,62 @@ class ResultsPage extends ConsumerWidget {
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child:           OutlinedButton(
-            onPressed: () {
-              Navigator.of(context).pushReplacementNamed('/practice', arguments: {'letter': letter});
-            },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  // Crear un PracticeItem con la misma letra para practicar otra vez
+                  final practiceItem = PracticeItem(
+                    id: letter.toLowerCase(),
+                    text: letter,
+                    status: PracticeStatus.pending,
+                  );
+                  Navigator.of(context).pushNamed(
+                    '/practice',
+                    arguments: practiceItem,
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Practicar Otra'),
+              ),
             ),
-            child: const Text('Practicar Otra'),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  // TODO: Navegar a historial
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Próximamente: Ver Historial')),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Ver Historial'),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton(
             onPressed: () {
-              // TODO: Navegar a historial
+              // Regresar a la selección de práctica
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/practice-selection',
+                (route) => false,
+              );
             },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
-            child: const Text('Ver Historial'),
+            child: const Text('Volver a Selección'),
           ),
         ),
       ],

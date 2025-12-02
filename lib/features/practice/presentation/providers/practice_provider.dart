@@ -59,6 +59,14 @@ class PracticeNotifier extends StateNotifier<PracticeState> {
     );
   }
 
+  Future<void> saveDrawing(String imagePath) async {
+    state = state.copyWith(
+      status: PracticeStatus.imageSelected,
+      selectedImagePath: imagePath,
+      errorMessage: null,
+    );
+  }
+
   Future<void> analyzeHandwriting() async {
     if (state.selectedImagePath == null) {
       state = state.copyWith(

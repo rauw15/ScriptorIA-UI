@@ -32,10 +32,10 @@ class BottomNavigation extends StatelessWidget {
       ),
       child: SafeArea(
         child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisSize: MainAxisSize.max,
             children: [
               _buildNavItem(
                 icon: Icons.home,
@@ -75,28 +75,37 @@ class BottomNavigation extends StatelessWidget {
       child: InkWell(
         onTap: () => onTap(index),
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isSelected
-                  ? AppColors.primary
-                  : AppColors.onSurfaceVariant,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 22,
                 color: isSelected
                     ? AppColors.primary
                     : AppColors.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

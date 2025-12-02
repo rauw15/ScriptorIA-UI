@@ -7,6 +7,9 @@ import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/home/presentation/pages/home_page.dart';
 import 'features/practice/presentation/pages/practice_page.dart';
+import 'features/practice/presentation/pages/practice_selection_page.dart';
+import 'features/progress/presentation/pages/progress_page.dart';
+import 'features/profile/presentation/pages/profile_page.dart';
 import 'features/home/domain/entities/practice_item.dart';
 import 'features/results/presentation/pages/results_page.dart';
 
@@ -35,6 +38,9 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/home': (context) => const HomePage(),
+        '/practice-selection': (context) => const PracticeSelectionPage(),
+        '/progress': (context) => const ProgressPage(),
+        '/profile': (context) => const ProfilePage(),
         '/practice': (context) {
           final args = ModalRoute.of(context)!.settings.arguments;
           if (args is PracticeItem) {

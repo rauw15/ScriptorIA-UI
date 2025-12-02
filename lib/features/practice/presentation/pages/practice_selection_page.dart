@@ -1,50 +1,29 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/practice_item.dart';
-import '../../domain/entities/user_stats.dart';
-import '../../data/repositories/practice_repository_impl.dart';
-import '../../../auth/data/repositories/auth_repository_impl.dart';
-import '../widgets/home_header.dart';
-import '../widgets/stat_card.dart';
-import '../widgets/section_header.dart';
-import '../widgets/letter_card.dart';
-import '../widgets/bottom_navigation.dart';
+import '../../../home/domain/entities/practice_item.dart';
+import '../../../home/data/repositories/practice_repository_impl.dart';
+import '../../../home/presentation/widgets/letter_card.dart';
+import '../../../home/presentation/widgets/section_header.dart';
+import '../../../home/presentation/widgets/bottom_navigation.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class PracticeSelectionPage extends StatefulWidget {
+  const PracticeSelectionPage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<PracticeSelectionPage> createState() => _PracticeSelectionPageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
+class _PracticeSelectionPageState extends State<PracticeSelectionPage> {
   final PracticeRepositoryImpl _repository = PracticeRepositoryImpl();
-  final AuthRepositoryImpl _authRepository = AuthRepositoryImpl();
   
   bool _isLoading = true;
-  String userName = 'Usuario';
-  UserStats? _stats;
   List<PracticeItem> _letters = [];
   List<PracticeItem> _numbers = [];
+  int _currentIndex = 1; // Índice de práctica en el bottom nav
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
     _loadData();
-  }
-
-  Future<void> _loadUserData() async {
-    try {
-      final user = await _authRepository.getCurrentUser();
-      if (user != null && mounted) {
-        setState(() {
-          userName = user.name ?? user.email.split('@')[0];
-        });
-      }
-    } catch (e) {
-      // Si no hay usuario, mantener el nombre por defecto
-    }
   }
 
   Future<void> _loadData() async {
@@ -55,13 +34,11 @@ class _HomePageState extends State<HomePage> {
     try {
       final letters = await _repository.getLetters();
       final numbers = await _repository.getNumbers();
-      final stats = await _repository.getUserStats();
 
       if (mounted) {
         setState(() {
           _letters = letters;
           _numbers = numbers;
-          _stats = stats;
           _isLoading = false;
         });
       }
@@ -82,10 +59,10 @@ class _HomePageState extends State<HomePage> {
 
     switch (index) {
       case 0:
-        // Ya estamos en home
+        Navigator.of(context).pushReplacementNamed('/home');
         break;
       case 1:
-        Navigator.of(context).pushReplacementNamed('/practice-selection');
+        // Ya estamos aquí
         break;
       case 2:
         Navigator.of(context).pushReplacementNamed('/progress');
@@ -99,6 +76,12 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Seleccionar Práctica'),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: SafeArea(
         child: _isLoading
             ? const Center(
@@ -112,22 +95,10 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header con saludo
-                      HomeHeader(userName: userName),
-                      const SizedBox(height: 25),
-                      // Tarjetas de estadísticas
-                      if (_stats != null) _buildStatsSection(),
-                      const SizedBox(height: 30),
                       // Sección de Letras
-                      SectionHeader(
+                      const SectionHeader(
                         title: 'Letras del Alfabeto',
-                        showSeeAll: true,
-                        onSeeAll: () {
-                          // TODO: Navegar a pantalla de todas las letras
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Ver todas las letras')),
-                          );
-                        },
+                        showSeeAll: false,
                       ),
                       const SizedBox(height: 15),
                       _buildLettersGrid(),
@@ -146,38 +117,6 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _currentIndex,
         onTap: _onNavItemTapped,
       ),
-    );
-  }
-
-  Widget _buildStatsSection() {
-    if (_stats == null) return const SizedBox.shrink();
-
-    return Row(
-      children: [
-        Expanded(
-          child: StatCard(
-            icon: Icons.track_changes,
-            value: _stats!.completedPractices.toString(),
-            label: 'Prácticas',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: StatCard(
-            icon: Icons.trending_up,
-            value: '${_stats!.progressPercentageRounded}%',
-            label: 'Progreso',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: StatCard(
-            icon: Icons.emoji_events,
-            value: _stats!.totalAchievements.toString(),
-            label: 'Logros',
-          ),
-        ),
-      ],
     );
   }
 

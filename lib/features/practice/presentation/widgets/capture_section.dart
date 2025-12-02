@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'drawing_canvas.dart';
 
-class CaptureSection extends StatelessWidget {
+enum CaptureMode { camera, drawing }
+
+class CaptureSection extends StatefulWidget {
   final String? imagePath;
   final VoidCallback onTakePhoto;
   final VoidCallback onPickFromGallery;
   final VoidCallback onRemoveImage;
+  final Function(String) onDrawingSaved;
 
   const CaptureSection({
     super.key,
@@ -13,11 +17,20 @@ class CaptureSection extends StatelessWidget {
     required this.onTakePhoto,
     required this.onPickFromGallery,
     required this.onRemoveImage,
+    required this.onDrawingSaved,
   });
+
+  @override
+  State<CaptureSection> createState() => _CaptureSectionState();
+}
+
+class _CaptureSectionState extends State<CaptureSection> {
+  CaptureMode _currentMode = CaptureMode.camera;
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
@@ -30,43 +43,151 @@ class CaptureSection extends StatelessWidget {
         ),
         const SizedBox(height: 15),
         
-        // Área de captura o imagen
+        // Selector de modo
+        _buildModeSelector(),
+        
+        const SizedBox(height: 15),
+        
+        // Área de captura, dibujo o imagen
         _buildCaptureArea(context),
         
         const SizedBox(height: 15),
         
-        // Botones de acción
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onTakePhoto,
-                icon: const Icon(Icons.camera_alt, size: 20),
-                label: const Text('Tomar Foto'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+        // Botones de acción según el modo
+        if (_currentMode == CaptureMode.camera) _buildCameraButtons(),
+      ],
+    );
+  }
+
+  Widget _buildModeSelector() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFfff0f2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFd6c2c5),
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildModeButton(
+              mode: CaptureMode.camera,
+              icon: Icons.camera_alt,
+              label: 'Cámara',
+            ),
+          ),
+          Expanded(
+            child: _buildModeButton(
+              mode: CaptureMode.drawing,
+              icon: Icons.edit,
+              label: 'Dibujar',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeButton({
+    required CaptureMode mode,
+    required IconData icon,
+    required String label,
+  }) {
+    final isSelected = _currentMode == mode;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _currentMode = mode;
+            if (mode == CaptureMode.camera && widget.imagePath != null) {
+              widget.onRemoveImage();
+            }
+          });
+        },
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF8d4a5b) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: isSelected ? Colors.white : const Color(0xFF514346),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : const Color(0xFF514346),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraButtons() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: widget.onTakePhoto,
+            icon: const Icon(Icons.camera_alt, size: 18),
+            label: const Text(
+              'Tomar Foto',
+              style: TextStyle(fontSize: 13),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onPickFromGallery,
-                icon: const Icon(Icons.photo_library, size: 20),
-                label: const Text('Galería'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              minimumSize: const Size(0, 44),
             ),
-          ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: widget.onPickFromGallery,
+            icon: const Icon(Icons.photo_library, size: 18),
+            label: const Text(
+              'Galería',
+              style: TextStyle(fontSize: 13),
+            ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              minimumSize: const Size(0, 44),
+            ),
+          ),
         ),
       ],
     );
   }
 
   Widget _buildCaptureArea(BuildContext context) {
-    if (imagePath != null) {
+    if (_currentMode == CaptureMode.drawing) {
+      return DrawingCanvas(
+        onDrawingComplete: (imagePath) {
+          widget.onDrawingSaved(imagePath);
+        },
+        onClear: () {
+          widget.onRemoveImage();
+        },
+      );
+    }
+    
+    if (widget.imagePath != null) {
       return _buildImagePreview(context);
     }
     
@@ -87,6 +208,7 @@ class CaptureSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
             Icons.camera_alt_outlined,
@@ -123,7 +245,7 @@ class CaptureSection extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(17),
             child: Image.file(
-              File(imagePath!),
+              File(widget.imagePath!),
               fit: BoxFit.cover,
               height: 300,
               width: double.infinity,
@@ -133,7 +255,7 @@ class CaptureSection extends StatelessWidget {
             top: 10,
             right: 10,
             child: IconButton(
-              onPressed: onRemoveImage,
+              onPressed: widget.onRemoveImage,
               icon: const Icon(Icons.close),
               style: IconButton.styleFrom(
                 backgroundColor: const Color(0xFFba1a1a),

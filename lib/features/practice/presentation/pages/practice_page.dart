@@ -62,13 +62,14 @@ class _PracticePageState extends ConsumerState<PracticePage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Tarjeta de referencia
             ReferenceLetterCard(letter: widget.letter),
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
             
             // Sección de captura
             CaptureSection(
@@ -76,8 +77,9 @@ class _PracticePageState extends ConsumerState<PracticePage> {
               onTakePhoto: () => practiceNotifier.pickImageFromCamera(),
               onPickFromGallery: () => practiceNotifier.pickImageFromGallery(),
               onRemoveImage: () => practiceNotifier.removeImage(),
+              onDrawingSaved: (imagePath) => practiceNotifier.saveDrawing(imagePath),
             ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
             
             // Botón de analizar
             _buildAnalyzeButton(practiceState, practiceNotifier),
@@ -90,10 +92,13 @@ class _PracticePageState extends ConsumerState<PracticePage> {
             if (practiceState.errorMessage != null)
               _buildErrorWidget(practiceState.errorMessage!),
             
-            const SizedBox(height: 25),
+            const SizedBox(height: 20),
             
             // Tarjeta de consejos
             const TipsCard(),
+            
+            // Padding adicional al final para evitar overflow
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -129,22 +134,28 @@ class _PracticePageState extends ConsumerState<PracticePage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: isEnabled ? null : const Color(0xFFfbeaec),
           foregroundColor: isEnabled ? Colors.white : const Color(0xFF847376),
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          minimumSize: const Size(double.infinity, 50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.auto_awesome, size: 24),
-            const SizedBox(width: 10),
-            const Text(
-              'Analizar Caligrafía',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+            const Icon(Icons.auto_awesome, size: 22),
+            const SizedBox(width: 8),
+            Flexible(
+              child: const Text(
+                'Analizar Caligrafía',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -162,6 +173,7 @@ class _PracticePageState extends ConsumerState<PracticePage> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           LinearProgressIndicator(
             backgroundColor: const Color(0xFFf5e4e6),

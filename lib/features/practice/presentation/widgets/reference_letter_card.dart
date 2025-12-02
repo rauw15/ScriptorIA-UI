@@ -28,6 +28,7 @@ class ReferenceLetterCard extends StatelessWidget {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
             'Letra de Referencia',
